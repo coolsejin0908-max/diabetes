@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import pickle
 import joblib
-from sklearn.preprocessing import StandardScaler
 
 # 페이지 설정
 st.set_page_config(
@@ -106,13 +104,13 @@ with col2:
     dpf = st.number_input("당뇨 가족력 (DPF)", min_value=0.0, max_value=2.5, value=0.5, step=0.01, help="당뇨병 가족력 함수")
     age = st.number_input("나이", min_value=0, max_value=120, value=30, step=1, help="만 나이")
 
-# 파생 변수 계산 (미리 보여주지 않아도 됨)
+# 파생 변수 계산
 blood_glucose_index = glucose + blood_pressure
 pancreas_index = glucose + insulin
 metabolic_risk_index = glucose + bmi
 elderly = 1 if age >= 50 else 0
 
-# 입력 데이터를 DataFrame으로 구성
+# 입력 데이터를 DataFrame으로 구성 (모델 학습 시 사용된 컬럼명과 동일해야 함)
 input_data = pd.DataFrame(
     [[pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, dpf, age,
       blood_glucose_index, pancreas_index, metabolic_risk_index, elderly]],
@@ -120,16 +118,16 @@ input_data = pd.DataFrame(
              '혈당혈압지수', '췌장기능지수', '대사위험지수', '고령여부']
 )
 
-# 모델 및 스케일러 로드 함수
+# 모델 및 스케일러 로드 함수 (파일명 수정)
 @st.cache_resource
 def load_model_and_scaler():
     try:
-        model = joblib.load('log_model_eng.pkl')
+        model = joblib.load('diabetes_model.pkl')   # 수정됨
         scaler = joblib.load('scaler.pkl')
         return model, scaler
-    except FileNotFoundError:
-        st.error("❌ 모델 파일(log_model_eng.pkl) 또는 스케일러 파일(scaler.pkl)을 찾을 수 없습니다.")
-        st.info("학습된 모델 파일을 현재 디렉토리에 배치해주세요.")
+    except FileNotFoundError as e:
+        st.error(f"❌ 파일을 찾을 수 없습니다: {e.filename}")
+        st.info("diabetes_model.pkl과 scaler.pkl이 같은 디렉토리에 있는지 확인하세요.")
         return None, None
 
 log_model_eng, scaler = load_model_and_scaler()
@@ -178,7 +176,6 @@ if predict_button:
         
         with col_res2:
             st.metric(label="당뇨 확률", value=f"{diabetes_prob:.1f}%", delta=None)
-            # 진행 바 표시
             st.progress(int(diabetes_prob))
             st.caption("확률이 50% 이상이면 당뇨로 분류됩니다.")
         
@@ -210,7 +207,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 실행 방법 안내 (최초 실행 시)
+# 실행 가이드 (최초 실행 시)
 if 'show_help' not in st.session_state:
     st.session_state.show_help = True
     with st.expander("🚀 실행 가이드"):
@@ -219,5 +216,5 @@ if 'show_help' not in st.session_state:
         2. **당뇨 예측하기** 버튼을 클릭하세요.
         3. 예측 결과(정상/당뇨)와 당뇨 확률이 표시됩니다.
         
-        **필요 파일**: `log_model_eng.pkl`, `scaler.pkl` (학습된 모델과 스케일러)
+        **필요 파일**: `diabetes_model.pkl`, `scaler.pkl` (동일 디렉토리에 있어야 함)
         """)
